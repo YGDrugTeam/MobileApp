@@ -1,0 +1,15 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+class Settings:
+    EXPO_PUBLIC_AZURE_VISION_KEY = os.getenv("EXPO_PUBLIC_AZURE_VISION_KEY")
+    EXPO_PUBLIC_AZURE_VISION_ENDPOINT = os.getenv("EXPO_PUBLIC_AZURE_VISION_ENDPOINT")
+
+    EXPO_PUBLIC_AZURE_OPENAI_KEY = os.getenv("EXPO_PUBLIC_AZURE_OPENAI_KEY")
+    EXPO_PUBLIC_AZURE_OPENAI_ENDPOINT = os.getenv("EXPO_PUBLIC_AZURE_OPENAI_ENDPOINT")
+
+
+settings = Settings()
