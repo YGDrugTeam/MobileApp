@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 
+
+# .env에서 키를 읽어오는 코드
 load_dotenv()
 
 
