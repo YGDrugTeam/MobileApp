@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("EXPO_PUBLIC_AZURE_OPENAI_KEY"))
+client = OpenAI(api_key=os.getenv("AZURE_OPENAI_API_KEY"))
 
 
 async def analyze_pill_with_gpt(system_prompt: str, user_prompt: str):

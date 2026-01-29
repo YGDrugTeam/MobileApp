@@ -7,6 +7,8 @@ import xml.etree.ElementTree as ET
 from fastapi import FastAPI
 from app.routers import custom_vision_router, pill_agent_router
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.pill import router as pill_router
 
 
 load_dotenv()
@@ -17,6 +19,15 @@ app = FastAPI()
 # pip install azure-cognitiveservices-vision-customvision 커스텀 비전
 app.include_router(custom_vision_router.router)
 app.include_router(pill_agent_router.router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 개발용
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(pill_router, prefix="/api/v1/pill")
 
 # 1. 설정 (인증키와 경로)
 # encoding_key = "940b88c7d03a653c76851dda7e8b9db654b495fb18a3c9dc923b32dd202da2e9"
