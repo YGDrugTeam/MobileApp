@@ -1,6 +1,7 @@
 import os
 from openai import OpenAI
 
+# (여기는 에이전트용)
 client = OpenAI(api_key=os.getenv("AZURE_OPENAI_API_KEY"))
 
 
