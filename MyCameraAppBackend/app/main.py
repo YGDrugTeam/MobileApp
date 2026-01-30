@@ -17,6 +17,9 @@ app = FastAPI()
 
 
 # pip install azure-cognitiveservices-vision-customvision 커스텀 비전
+# uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 외부폰 접속 포트
+# 172.16.30.167 ipv4 주소(프론트에서 쓸 백엔드 주소)
+
 app.include_router(custom_vision_router.router)
 app.include_router(pill_agent_router.router)
 app.add_middleware(
@@ -26,6 +29,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
 
 app.include_router(pill_router, prefix="/api/v1/pill")
 

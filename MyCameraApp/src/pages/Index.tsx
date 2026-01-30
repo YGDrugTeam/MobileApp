@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Text, Alert } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import React, { useState, useCallback, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // 1. 우리가 Expo용으로 고친 컴포넌트들 임포트
 import { MedicLensLogo } from "../components/MedicLensLogo";
@@ -13,10 +13,21 @@ import { Button } from "../components/ui/button";
 
 // 2. 아이콘 및 서비스 (Native용)
 import { ArrowLeft, Search, Camera, XCircle } from "lucide-react-native";
-// 주의: 아래 서비스들은 실제 API 통신 코드가 들어있어야 합니다.
 import { analyzeDrugImage, searchDrug } from "../services/drugService";
 
-type AppStage = "onboarding" | "capture" | "analyzing" | "result" | "error" | "manual-search";
+/* ===============================
+   ✅ 백엔드 연결 확인용 설정
+   =============================== */
+const API_BASE_URL = "http://172.16.30.167:8000"; // ⚠️ 네 PC 실제 IP로 바꿔야 함
+
+type AppStage =
+  | "onboarding"
+  | "capture"
+  | "analyzing"
+  | "result"
+  | "error"
+  | "manual-search";
+
 type AnalysisStage = "quality" | "ocr" | "matching" | "summarizing";
 
 interface DrugInfo {
@@ -34,13 +45,34 @@ const Index = () => {
   const [drugInfo, setDrugInfo] = useState<DrugInfo | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
+  /* ===============================
+     ✅ 앱 시작 시 백엔드 연결 테스트
+     =============================== */
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/ping`)
+      .then(res => res.json())
+      .then(data => {
+        console.log("✅ 백엔드 연결 성공:", data);
+      })
+      .catch(err => {
+        console.error("❌ 백엔드 연결 실패:", err);
+      });
+  }, []);
+
   const handleStart = useCallback(() => setStage("capture"), []);
+
+  const handleGoHome = useCallback(() => {
+  setDrugInfo(null);
+  setErrorMessage("");
+  setAnalysisStage("quality");
+  setStage("onboarding");
+}, []);
+
 
   const handleImageCapture = useCallback(async (imageData: string) => {
     setStage("analyzing");
     setAnalysisStage("quality");
 
-    // 로딩 시뮬레이션
     const stages: AnalysisStage[] = ["quality", "ocr", "matching", "summarizing"];
     stages.forEach((s, i) => {
       setTimeout(() => setAnalysisStage(s), i * 1500);
@@ -55,7 +87,7 @@ const Index = () => {
         setErrorMessage(result.error || "분석에 실패했습니다.");
         setStage("error");
       }
-    } catch (error) {
+    } catch {
       setErrorMessage("분석 중 오류가 발생했습니다.");
       setStage("error");
     }
@@ -75,7 +107,7 @@ const Index = () => {
         setErrorMessage(result.error || "검색에 실패했습니다.");
         setStage("error");
       }
-    } catch (error) {
+    } catch {
       setErrorMessage("검색 중 오류가 발생했습니다.");
       setStage("error");
     }
@@ -92,7 +124,6 @@ const Index = () => {
     else if (stage === "capture") setStage("onboarding");
   }, [stage]);
 
-  // 온보딩은 전체 화면으로 렌더링
   if (stage === "onboarding") {
     return <OnboardingScreen onStart={handleStart} />;
   }
@@ -150,7 +181,7 @@ const Index = () => {
 
         {/* 4. 결과 출력 */}
         {stage === "result" && drugInfo && (
-          <DrugResultCard drugInfo={drugInfo} onRetry={handleRetry} />
+          <DrugResultCard drugInfo={drugInfo} onRetry={handleRetry} onGoHome={handleGoHome}/>
         )}
 
         {/* 5. 에러 화면 */}

@@ -1,5 +1,4 @@
-// 1. 기존의 상대 경로 대신, 프로젝트 루트에 새로 만들 Supabase 설정 파일을 참조합니다.
-import { supabase } from "../lib/supabase.ts"; 
+// src/services/drugService.ts
 
 interface DrugInfo {
   drugId: string;
@@ -14,66 +13,105 @@ interface AnalysisResult {
   success: boolean;
   drugInfo?: DrugInfo;
   error?: string;
-  stage?: "quality" | "ocr" | "matching" | "summarizing";
-  analysisData?: {
-    imprint_text?: string;
-    shape?: string;
-    color?: string;
-    description?: string;
-  };
+  confidence?: number;
 }
 
+/** ⚠️ FastAPI 서버 주소 (PC 실제 IP) */
+const API_BASE_URL = "http://172.16.30.167:8000";
+
 /**
- * 알약 이미지 분석 (Edge Function 호출)
+ * 📸 알약 이미지 분석 (FastAPI → Custom Vision → GPT)
  */
-export const analyzeDrugImage = async (imageData: string): Promise<AnalysisResult> => {
+export const analyzeDrugImage = async (
+  imageData: string
+): Promise<AnalysisResult> => {
   try {
-    // React Native에서는 이미지 데이터가 매우 클 수 있으므로 base64 처리에 유의해야 합니다.
-    const { data, error } = await supabase.functions.invoke("analyze-drug", {
-      body: { imageData },
+    const formData = new FormData();
+
+    // Expo ImagePicker 결과는 보통 base64 or uri
+    formData.append("file", {
+      uri: imageData,
+      name: "pill.jpg",
+      type: "image/jpeg",
+    } as any);
+
+    const res = await fetch(`${API_BASE_URL}/pill/analyze`, {
+      method: "POST",
+      body: formData,
     });
 
-    if (error) {
-      console.error("Edge function error:", error);
+    if (!res.ok) {
+      throw new Error("서버 응답 실패");
+    }
+
+    const data = await res.json();
+
+    if (!data.success) {
       return {
         success: false,
-        error: "서버 연결에 실패했습니다. 다시 시도해주세요.",
+        error: data.message || "알약 분석에 실패했습니다.",
       };
     }
 
-    return data as AnalysisResult;
+    /** 🔥 FastAPI → GPT 결과를 프론트 DrugInfo로 매핑 */
+    return {
+      success: true,
+      drugInfo: {
+        drugId: data.pill_tag,
+        drugName: data.analysis.pill_name,
+        dosage: data.analysis.usage,
+        efficacy: data.analysis.appearance?.shape ?? "",
+        summary: data.analysis.usage,
+        confidence: data.confidence,
+      },
+    };
   } catch (err) {
-    console.error("Network error:", err);
+    console.error("❌ analyzeDrugImage error:", err);
     return {
       success: false,
-      error: "네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.",
+      error: "서버와 통신 중 오류가 발생했습니다.",
     };
   }
 };
 
 /**
- * 알약 텍스트 검색 (Edge Function 호출)
+ * 🔍 텍스트 기반 수동 검색 (선택 기능)
+ * → 지금은 GPT 직접 호출 or 임시 응답으로 처리 가능
  */
-export const searchDrug = async (query: string): Promise<AnalysisResult> => {
+export const searchDrug = async (
+  query: string
+): Promise<AnalysisResult> => {
   try {
-    const { data, error } = await supabase.functions.invoke("search-drug", {
-      body: { query },
+    const res = await fetch(`${API_BASE_URL}/pill/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query }),
     });
 
-    if (error) {
-      console.error("Search error:", error);
+    if (!res.ok) {
+      throw new Error("검색 실패");
+    }
+
+    const data = await res.json();
+
+    if (!data.success) {
       return {
         success: false,
-        error: "검색에 실패했습니다. 다시 시도해주세요.",
+        error: data.message || "검색 결과가 없습니다.",
       };
     }
 
-    return data as AnalysisResult;
+    return {
+      success: true,
+      drugInfo: data.drugInfo,
+    };
   } catch (err) {
-    console.error("Network error:", err);
+    console.error("❌ searchDrug error:", err);
     return {
       success: false,
-      error: "네트워크 오류가 발생했습니다.",
+      error: "검색 중 오류가 발생했습니다.",
     };
   }
 };
